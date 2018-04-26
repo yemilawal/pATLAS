@@ -1,5 +1,5 @@
-/*globals listGiFilter, resetDisplayTaxaBox, chroma, showLegend,
- nodeColorReset, assemblyJson */
+/*globals listGiFilter, resetDisplayTaxaBox, chroma,
+ nodeColorReset, assemblyJson, consensusJson */
 
 /**
  * Function that convert a given range of values between oldMin and oldMax
@@ -28,7 +28,7 @@ const rangeConverter = (x, oldMin, oldMax, newMin, newMax) => {
  */
 const cutoffParser = () => {
   const cutoff = $("#cutoffValue").val()
-  return (cutoff !== "") ? parseFloat(cutoff.val()) : 0.6
+  return (cutoff !== "") ? parseFloat(cutoff) : 0.6
 }
 
 /**
@@ -58,7 +58,29 @@ const copyNumberCutoff = () => {
  */
 const cutoffParserSeq = () => {
   const cutoff = $("#cutoffValueSeq").val()
-  return (cutoff !== "") ? parseFloat(cutoff.val()) : 0.9
+  return (cutoff !== "") ? parseFloat(cutoff) : 0.9
+}
+
+/**
+ * Function to check if the user set a cutoff value for import sequence results
+ * shared hashes percentage between pairs of sequences. If none is provided the
+ * default value will be set here.
+ * @returns {number}
+ */
+const cutoffHashSeq = () => {
+  const cutoff = $("#cutoffHashSeq").val()
+  return (cutoff !== "") ? parseFloat(cutoff) : 0.8
+}
+
+/**
+ * Function to check if the user set a cutoff value for the combined values
+ * between mapping percentage and mash_screen identity divided by 2
+ * (approximately). If none is provided the default value will be set here.
+ * @returns {number}
+ */
+const cutoffParserConsensus = () => {
+  const cutoff = $("#cutoffValueCombined").val()
+  return (cutoff !== "") ? parseFloat(cutoff) : 0.9
 }
 
 // function to iterate through nodes
@@ -78,26 +100,42 @@ const cutoffParserSeq = () => {
  * @param {number} copyNumber - The copy number value associated with this
  * plasmid that came from mash screen results. Other modules will not have
  * copy number for now
+ * @param {number} percMash - The percentage identity reported by mash and
+ * saved in the imported json file
+ * @param {number} percMashDist - The percentage identity reported by mash dist.
+ * This module is used in assembly mode or sequence import.
+ * @param {number} sharedHashes - The percentage of hashes shared between
+ * a reference plasmid and the query sequence.
  */
-const nodeIter = (g, readColor, gi, graphics, perc, copyNumber) => {
+const nodeIter = (g, readColor, gi, graphics, perc, copyNumber, percMash,
+                  percMashDist, sharedHashes) => {
+  
   g.forEachNode( (node) => {
-    // when filter removes all nodes and then adds them again. Looks like g
-    // was somehow affected.
-    // if statement added for parsing singletons into the graph visualization
-    // if (node.id.indexOf("singleton") > -1) {
-    //   nodeGI = node.id.split("_").slice(1, 4).join("_")
-    // } else {
+
     const nodeGI = node.id.split("_").slice(0, 3).join("_")
-    // }
+
     const nodeUI = graphics.getNodeUI(node.id)
 
     if (gi === nodeGI) {
       nodeUI.backupColor = nodeUI.color
       nodeUI.color = readColor
       perc = parseFloat(perc)
-      node.data["percentage"] =  perc.toFixed(2).toString()
-      if (copyNumber) {
+
+      // for mapping
+      if (perc) {
+        node.data["percentage"] = perc.toFixed(2).toString()
+      }
+
+      // for mash screen
+      if (percMash) {
         node.data["copyNumber"] = copyNumber.toString()
+        node.data["percMash"] = percMash.toFixed(2).toString()
+      }
+
+      // for mash dist aka assembly
+      if (percMashDist) {
+        node.data["sharedHashes"] = sharedHashes.toString()
+        node.data["percMashDist"] = percMashDist.toFixed(2).toString()
       }
     }
   })
@@ -113,12 +151,11 @@ const nodeIter = (g, readColor, gi, graphics, perc, copyNumber) => {
  * @param {boolean} readMode - boolean used to control if we are dealing
  * with imports from files or with distance or size ratio modes
  */
-const palette = (scale, x, readMode) => { // x is the number of colors
-// to the
-// gradient
-  showLegend = document.getElementById("colorLegend") // global variable to
+const palette = (scale, x, readMode) => {
+//   showLegend = document.getElementById("colorLegend") // global variable to
   // be reset by the button reset-filters
-  showLegend.style.display = "block"
+  $("#colorLegend").show()
+  // showLegend.style.display = "block"
   const tmpArray = new Array(x)// create an empty array with length x
   const styleWidth = 100 / x
   // enters this statement for coloring the links and not the nodes
@@ -171,49 +208,59 @@ const readColoring = (g, listGi, graphics, renderer, readString) => {
   let listGiFilter = []
   let meanValue, minValue
   let counter = 0
+
   for (let string in readString) {
     if ({}.hasOwnProperty.call(readString, string)) {
       counter += 1
+
+      // the accession number
       const gi = string
+
+      /**
+       * perc variable can be a percentage (string), an array [percentage,
+       * (perc_hashes or copy_number)] or even an object with a file for
+       * each of the approaches used, like:
+       * {file1: {perc: 0.98, otherStuff: "lala"} , file2:...}
+       */
       const perc = readString[string]
 
       // adds node if it doesn't have links
       if (perc.constructor === Array) {
-        // if value is array, enter mash screen mode
+        // if value is array, enter mash screen mode or assembly mode
         const identity = parseFloat(perc[0])
-        const copyNumber = perc[1]
+        const copyNumber = perc[1]  //copy number may refer to the percentage
+        // of shared hashes
 
-        if (identity >= cutoffParserMash() && copyNumber >= copyNumberCutoff()) {
-          const newPerc = rangeConverter(identity, cutoffParserMash(), 1, 0, 1)
-          const readColor = chroma.mix("lightsalmon", "maroon", newPerc).hex().replace("#", "0x")
-          const scale = chroma.scale(["lightsalmon", "maroon"])
-          palette(scale, 10, readMode)
-          nodeIter(g, readColor, gi, graphics, identity, copyNumber)
-          if (listGi.includes(gi)) {
-            listGiFilter.push(gi)
-          }
-        }
-        if (Object.keys(readString).length === counter) {
-          // min value is the one fetched from the input form or by default 0.6
-          // values are fixed to two decimal
-          minValue = parseFloat(
-            ($("#cutoffValueMash").val() !== "") ? $("#cutoffValueMash").val() : "0.90"
-          ).toFixed(2)
-          // mean value is the sum of the min value plus the range between the min
-          // and max values divided by two
-          meanValue = parseFloat(minValue) + ((1 - parseFloat(minValue)) / 2)
-        }
-        // }
-        // otherwise just runs read mode
-      } else {
-        if (assemblyJson !== false){
-          // checks if assemblyJson is being executed
-          if (perc >= cutoffParserSeq()) {
-            const newPerc = rangeConverter(perc, cutoffParserSeq(), 1, 0, 1)
+        // if mash screen
+        if (assemblyJson === false) {
+
+          if (identity >= cutoffParserMash() && copyNumber >= copyNumberCutoff()) {
+            const newPerc = rangeConverter(identity, cutoffParserMash(), 1, 0, 1)
             const readColor = chroma.mix("lightsalmon", "maroon", newPerc).hex().replace("#", "0x")
             const scale = chroma.scale(["lightsalmon", "maroon"])
             palette(scale, 10, readMode)
-            nodeIter(g, readColor, gi, graphics, perc)
+            nodeIter(g, readColor, gi, graphics, false, copyNumber, identity)
+            if (listGi.includes(gi)) {
+              listGiFilter.push(gi)
+            }
+          }
+          if (Object.keys(readString).length === counter) {
+            // min value is the one fetched from the input form or by default 0.6
+            // values are fixed to two decimal
+            minValue = parseFloat(
+              ($("#cutoffValueMash").val() !== "") ? $("#cutoffValueMash").val() : "0.90"
+            ).toFixed(2)
+            // mean value is the sum of the min value plus the range between the min
+            // and max values divided by two
+            meanValue = parseFloat(minValue) + ((1 - parseFloat(minValue)) / 2)
+          }
+        } else {  // if assembly
+          if (identity >= cutoffParserSeq() && copyNumber >= cutoffHashSeq()) {
+            const newPerc = rangeConverter(identity, cutoffParserSeq(), 1, 0, 1)
+            const readColor = chroma.mix("lightsalmon", "maroon", newPerc).hex().replace("#", "0x")
+            const scale = chroma.scale(["lightsalmon", "maroon"])
+            palette(scale, 10, readMode)
+            nodeIter(g, readColor, gi, graphics, false, false, false, identity, copyNumber)
             if (listGi.includes(gi)) {
               listGiFilter.push(gi)
             }
@@ -228,76 +275,109 @@ const readColoring = (g, listGi, graphics, renderer, readString) => {
             // and max values divided by two
             meanValue = parseFloat(minValue) + ((1 - parseFloat(minValue)) / 2)
           }
-        } else {
-          // if value is a float, enters mapping
-          if (document.getElementsByClassName("check_file").checked) {
-            if (perc >= 0.5) {
-              // perc values had to be normalized to the percentage value between 0
-              // and 1
-              const readColor = chroma.mix("#eacc00", "maroon", (perc - 0.5) * 2).hex()
-                .replace("#", "0x")
-              nodeIter(g, readColor, gi, graphics, perc)
-              if (listGi.includes(gi)) {
-                listGiFilter.push(gi)
-              }
-            } else {
-              const readColor = chroma.mix("blue", "#eacc00", perc * 2).hex()
-                .replace("#", "0x")
-              nodeIter(g, readColor, gi, graphics, perc)
-              if (listGi.includes(gi)) {
-                listGiFilter.push(gi)
-              }
-            }
-            const scale = chroma.scale(["blue", "#eacc00", "maroon"])
-            palette(scale, 10, readMode)
+        }
+
+      } else if (consensusJson !== false) {
+
+        let combinedPerc = 0
+        let mappingPerc, mashScreenPerc, mashScreenCopy
+
+        // loop between the keys of files within each accession number (gi)
+        for (const key of Object.keys(perc)) {
+
+          if (key.includes("mapping")) {
+            // executed for mapping files
+
+            mappingPerc = parseFloat(perc[key])
+            combinedPerc += mappingPerc
+
           } else {
-            if (perc >= cutoffParser()) {
-              const newPerc = rangeConverter(perc, cutoffParser(), 1, 0, 1)
-              const readColor = chroma.mix("lightsalmon", "maroon", newPerc).hex().replace("#", "0x")
-              const scale = chroma.scale(["lightsalmon", "maroon"])
-              palette(scale, 10, readMode)
-              nodeIter(g, readColor, gi, graphics, perc)
-              if (listGi.includes(gi)) {
-                listGiFilter.push(gi)
-              }
-            }
+            // executed for mash screen files
+
+            mashScreenPerc = parseFloat(perc[key][0])
+            mashScreenCopy = parseFloat(perc[key][1])
+            combinedPerc += mashScreenPerc
+
           }
-          if (Object.keys(readString).length === counter) {
-            // min value is the one fetched from the input form or by default 0.6
-            // values are fixed to two decimal
-            minValue = parseFloat(
-              ($("#cutoffValue").val() !== "") ? $("#cutoffValue").val() : "0.60"
-            ).toFixed(2)
-            // mean value is the sum of the min value plus the range between the min
-            // and max values divided by two
-            meanValue = parseFloat(minValue) + ((1 - parseFloat(minValue)) / 2)
+        }
+
+        // converts from range 0-2 to range 0-1
+        const newPerc = rangeConverter(combinedPerc, cutoffParserConsensus(), 2, 0, 1)
+
+        // plot only if the combined percentage value in the correct
+        // range match the cutoff value
+        if (newPerc >= cutoffParserConsensus() ) {
+          const readColor = chroma.mix("lightsalmon", "maroon", newPerc).hex().replace("#", "0x")
+          const scale = chroma.scale(["lightsalmon", "maroon"])
+          palette(scale, 10, readMode)
+          nodeIter(g, readColor, gi, graphics, mappingPerc, mashScreenCopy, mashScreenPerc, false, false)
+
+          if (listGi.includes(gi) && !listGiFilter.includes(gi)) {
+            listGiFilter.push(gi)
           }
+
+        }
+
+        if (Object.keys(readString).length === counter) {
+          // min value is the one fetched from the input form or by default 0.6
+          // values are fixed to two decimal
+          minValue = parseFloat(
+            ($("#cutoffValueCombined").val() !== "") ?
+              $("#cutoffValueCombined").val() : "0.90"
+          ).toFixed(2)
+          // mean value is the sum of the min value plus the range between the min
+          // and max values divided by two
+          meanValue = parseFloat(minValue) + ((1 - parseFloat(minValue)) / 2)
+        }
+
+        // otherwise just runs read mode
+      } else {
+
+        if (perc >= cutoffParser()) {
+          const newPerc = rangeConverter(perc, cutoffParser(), 1, 0, 1)
+          const readColor = chroma.mix("lightsalmon", "maroon", newPerc).hex().replace("#", "0x")
+          const scale = chroma.scale(["lightsalmon", "maroon"])
+          palette(scale, 10, readMode)
+          nodeIter(g, readColor, gi, graphics, perc, false, false, false, false)
+
+          if (listGi.includes(gi)) {
+            listGiFilter.push(gi)
+          }
+        }
+
+        if (Object.keys(readString).length === counter) {
+          // min value is the one fetched from the input form or by default 0.6
+          // values are fixed to two decimal
+          minValue = parseFloat(
+            ($("#cutoffValue").val() !== "") ? $("#cutoffValue").val() : "0.60"
+          ).toFixed(2)
+          // mean value is the sum of the min value plus the range between the min
+          // and max values divided by two
+          meanValue = parseFloat(minValue) + ((1 - parseFloat(minValue)) / 2)
         }
       }
     }
   }
-  $("#readString").append("<div class='min'>" +
-    minValue.toString() + "</div>")
-    .append("<div class='med'>" +
-      meanValue.toFixed(2).toString() + "</div>")
-    .append("<div class='max'>1</div>")
-  document.getElementById("read_label").style.display = "block" // show label
-  // control all related divs
-  // TODO this code is duplicated, should be fixed
-  let showRerun = document.getElementById("Re_run")
-  let showGoback = document.getElementById("go_back")
-  let showDownload = document.getElementById("download_ds")
-  let showTable = document.getElementById("tableShow")
-  let heatMap = document.getElementById("heatmapButtonTab")
-  let plotButton = document.getElementById("plotButton")
-  showRerun.style.display = "block"
-  showGoback.style.display = "block"
-  showDownload.style.display = "block"
-  showTable.style.display = "block"
-  heatMap.style.display = "block"
-  plotButton.style.display = "block"
+
+  // if any results are found for the query, show buttons to interact and legend
+  if (listGiFilter.length !== 0) {
+    $("#readString").append("<div class='min'>" +
+      minValue.toString() + "</div>")
+      .append("<div class='med'>" +
+        meanValue.toFixed(2).toString() + "</div>")
+      .append("<div class='max'>1</div>")
+    $("#read_label").show()
+    // control all related divs
+    $("#Re_run, #go_back, #download_ds, #tableShow, #heatmapButtonTab," +
+      " #plotButton, #colorLegend").show()
+  } else {
+    // displays a warning if no results are found for this file
+    $("#alertId_noResults").show()
+  }
+
   renderer.rerender()
   $("#loading").hide()
+
   return [listGi, listGiFilter]
 }
 
@@ -319,10 +399,11 @@ const readColoring = (g, listGi, graphics, renderer, readString) => {
  * removes the links or not, respectively
  */
 const linkColoring = (g, graphics, renderer, mode, toggle) => {
+
   const promises = []
   const storeLinks = []
   g.forEachLink( (link) => {
-    const linkUI = (link !== undefined) ? graphics.getLinkUI(link.id) : null
+    const linkUI = (typeof link !== "undefined") ? graphics.getLinkUI(link.id) : null
     let linkColor
     // the lower the value the more intense the color is
     if (mode === "distance") {
@@ -357,15 +438,17 @@ const linkColoring = (g, graphics, renderer, mode, toggle) => {
     }
   })
   Promise.all(promises).then( () => {
+
     for (let l of storeLinks) {
       g.removeLink(l)
     }
+
     $("#loading").hide()
     renderer.rerender()
+
   })
 }
 
-// option to return links to their default color
 /**
  * A function to reset the color of all links to default color scheme.
  * @param {Object} g - graph related functions that iterate through nodes
@@ -401,9 +484,6 @@ const colorLegendFunction = (readMode) => {
   palette(scale, 10, readMode)
 }
 
-const forceSelectorFullRemoval = (selector) => {
-  $(`#${selector}`).val("").trigger("change")
-}
 
 // Clear nodes function for reset-sliders button
 /**
@@ -416,86 +496,27 @@ const forceSelectorFullRemoval = (selector) => {
  * @param {number} nodeColor - a variable that stores the hex code in
  * vivagraph readable style: 0xrrggbb.
  * @param {Object} renderer - vivagraph object to render the graph.
- * @param {Array} idsArrays - array that store ids names for taxa related labels
  */
-const resetAllNodes = (graphics, g, nodeColor, renderer, idsArrays) => {
+const resetAllNodes = (graphics, g, nodeColor, renderer) => {
   // first iters nodes to get nodeColor (default color)
+  // TODO avoid using this function within resetAllNodes function and use async/await instead
   nodeColorReset(graphics, g, nodeColor, renderer)
   // then deals with legend, and buttons associated with filters
-  if (typeof showLegend !== "undefined" && $("#scaleLegend").html() === "") {
-    showLegend.style.display = "none"
-    // showRerun.style.display = "none"
-    // showGoback.style.display = "none"
-    //document.getElementById("go_back").className += " disabled"
-    // showDownload.style.display = "none"
-    // showTable.style.display = "none"
-    document.getElementById("read_label").style.display = "none" // hide label
+  if ($("#scaleLegend").html() !== "") {
+    $("#read_label").hide()
     $("#readLegend").empty()
   } else {
-    $("#colorLegend").hide()
-    $("#colorLegendBox").empty()
-    document.getElementById("taxa_label").style.display = "none" // hide label
-    // showRerun.style.display = "none"
-    // showGoback.style.display = "none"
-    //document.getElementById("go_back").className += " disabled"
-    // showDownload.style.display = "none"
-    // showTable.style.display = "none"
-    document.getElementById("read_label").style.display = "none" // hide label
-    $("#readLegend").empty()
+    $("#colorLegend, #taxa_label, #read_label").hide()
+    $("#colorLegendBox, #readLegend").empty()
   }
-  resetDisplayTaxaBox(idsArrays)
-  // hide and empty assembly related legend
-  $("#assemblyLabel").hide()
-  $("#assemblyLegend").empty()
-  // empty and hide legend for taxa
-  $("#taxa_label").hide()
-  $("#colorLegendBox").empty()
-  // empty and hide legend for resistances
-  $("#res_label").hide()
-  $("#colorLegendBoxRes").empty()
-  // empty and hide legend for plasmid families
-  $("#pf_label").hide()
-  $("#colorLegendBoxPf").empty()
-  // empty and hide legend for virulence factors
-  $("#vir_label").hide()
-  $("#colorLegendBoxVir").empty()
-  // empty and hide distances legend
-  // $("#distance_label").hide()
-  // $("#scaleLegend").empty()
-  // empty and hide read legend
-  $("#read_label").hide()
-  $("#readLegend").empty()
 
-  // resets dropdown selections
-  $("#orderList").selectpicker("deselectAll")
-  $("#familyList").selectpicker("deselectAll")
-  $("#genusList").selectpicker("deselectAll")
-  $("#speciesList").selectpicker("deselectAll")
-  forceSelectorFullRemoval("speciesList")
-  forceSelectorFullRemoval("genusList")
-  forceSelectorFullRemoval("familyList")
-  forceSelectorFullRemoval("orderList")
-
-  // reset plasmid families and resistance associated divs
-  // this needs an array for reusability purposes
-  resetDisplayTaxaBox(["p_Plasmidfinder"])
-  forceSelectorFullRemoval("plasmidFamiliesList")
-  // resets dropdown selections
-  $("#plasmidFamiliesList").selectpicker("deselectAll")
-
-  resetDisplayTaxaBox(["p_Resfinder", "p_Card"])
-  // resets dropdown selections
-  $("#cardList").selectpicker("deselectAll")
-  $("#resList").selectpicker("deselectAll")
-  forceSelectorFullRemoval("cardList")
-  forceSelectorFullRemoval("resList")
-
-  // resets dropdown selections for virulence factors
-  resetDisplayTaxaBox(["p_Virulence"])
-  forceSelectorFullRemoval("virList")
-  // resets dropdown selections
-  $("#virList").selectpicker("deselectAll")
+  // hide and empty divs
+  $("#assemblyLabel, #taxa_label, #res_label, #pf_label, #vir_label, #read_label").hide()
+  $("#assemblyLegend, #colorLegendBox, #colorLegendBoxRes," +
+    " #colorLegendBoxPf, #colorLegendBoxVir, #readLegend").empty()
 }
+
+
 /**
  * Function to push value to masterReadArray
  * @param {Object} readFilejson - the object that contains the files to be
@@ -516,20 +537,27 @@ const pushToMasterReadArray = (readFilejson) => {
           const percValue = (typeof(fileEntries[i2]) === "number") ?
             fileEntries[i2] : parseFloat(fileEntries[i2][0])
           if (fileEntries[i2].constructor !== Array) {
+            // if (assemblyJson === false) {
+            if (returnArray.indexOf(i2) < 0 && percValue >= cutoffParser()) {
+              returnArray.push(i2)
+            }
+            // } else {
+            // assemblyJson is defined
+            // if (returnArray.indexOf(i2) < 0 && percValue >= cutoffParserSeq()) {
+            //   returnArray.push(i2)
+            // }
+          } else {
+            const copyNumber = parseFloat(fileEntries[i2][1])
             if (assemblyJson === false) {
-              if (returnArray.indexOf(i2) < 0 && percValue >= cutoffParser()) {
+              if (returnArray.indexOf(i2) < 0 && percValue >= cutoffParserMash()
+                && copyNumber >= copyNumberCutoff()) {
                 returnArray.push(i2)
               }
             } else {
-              // assemblyJson is defined
-              if (returnArray.indexOf(i2) < 0 && percValue >= cutoffParserSeq()) {
+              if (returnArray.indexOf(i2) < 0 && percValue >= cutoffParserSeq()
+                && copyNumber >= cutoffHashSeq()) {
                 returnArray.push(i2)
               }
-            }
-          } else {
-            const copyNumber = parseFloat(fileEntries[i2][1])
-            if (returnArray.indexOf(i2) < 0 && percValue >= cutoffParserMash() && copyNumber >= copyNumberCutoff()) {
-              returnArray.push(i2)
             }
           }
         }

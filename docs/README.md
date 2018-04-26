@@ -6,6 +6,7 @@
         * [Browse](Browse.md)
         * [Import](Import.md)
         * [Statistics](Statistics.md)
+        * [Projects](Projects.md)
     * [Top navigation bar](topbar.md)
         * [Table](table.md)
         * [Heatmap](heatmap.md)
@@ -14,3 +15,4 @@
 * [API]()
     * [Relationships and distances estimations](distances.md)
     * [Antibiotic and plasmid family detection](ABR_api.md)
+    * [Downloads](download_api.md)

@@ -1,0 +1,136 @@
+<div>
+  <div class="tab-content panels-faq">
+    <div class="tab-pane active" id="tab1">
+      <div class="panel-group" id="help-accordion-1">
+
+        <div class="panel panel-info">
+          <div class="panel-heading">
+            <a href="#faq3" data-toggle="collapse"
+               data-parent="#help-accordion-1" style="text-decoration:none">
+              <h4>How can I analyze my own data?</h4>
+            </a>
+          </div>
+          <div id="faq3" class="collapse">
+            <div class="panel-body">
+              <p>At the moment, pATLAS does not allow you to submit your
+                reads or Fasta files to analyze in a remote server.
+              <p>However, there exist two auxiliary scripts that can be run
+                locally (i.e. on your local pc). Instructions are provided in
+              their respective menus. For instance, if you want to check if a
+              given sequence is related to plasmids present in
+              pATLAS, you can go to '<b>Import</b>', then
+              '<b>Sequence</b>'. If, on the
+              other hand, you wish to know which plasmids are present in your
+              reads, you can go to 'Import' and then you will have two
+              options for that: <b>'Mapping results'</b> and <b>'Mash screen'</b>.
+            </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-info">
+
+          <div class="panel-heading">
+            <a href="#faq4" data-toggle="collapse"
+               data-parent="#help-accordion-1" style="text-decoration:none">
+              <h4>Can I submit sequence data to pATLAS?</h4>
+            </a>
+          </div>
+          <div id="faq4" class="collapse">
+            <div class="panel-body">
+              <p>pATLAS just support JSON files, so you can use
+                auxiliary scripts to generate these JSON file and then you
+                can import then through <b>'Import'</b> side menu.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="panel panel-info">
+          <div class="panel-heading" data-target="faq1">
+            <a href="#faq1" data-toggle="collapse"
+               data-parent="#help-accordion-1" style="text-decoration:none">
+              <h4>Cannot find my plasmid of interest. What can I do?</h4>
+            </a>
+          </div>
+          <div id="faq1" class="collapse">
+            <div class="panel-body">
+              <p>pATLAS uses NCBI refseq database and therefore only
+                plasmid sequences that are present in this database are
+                represented in this network. Plasmids in other databases
+                such as the 'nucleotide' or even European nucleotide archive
+                may be absent from pATLAS.</p>
+              <p>However, You can open an <a class="github-button"
+                                             href="https://github.com/tiagofilipe12/pATLAS/issues"
+                                             aria-label="Issue tiagofilipe12/pATLAS on GitHub">Issue</a>
+                on github with the list of accession numbers of the plasmids you
+                would like to see in pATLAS.
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-info">
+          <div class="panel-heading">
+            <a href="#faq2" data-toggle="collapse"
+               data-parent="#help-accordion-1" style="text-decoration:none">
+              <h4>Why are two plasmids with different sizes similar?</h4>
+            </a>
+          </div>
+          <div id="faq2" class="collapse">
+            <div class="panel-body">
+              <p>This means that the shared part of their sequences
+                have at least 90%
+                average nucleotide identity (mash distance of 0.1 or less).
+              <p>On the one hand, this gives an idea of the modularity of some
+                components that compose plasmids, i.e., some small modules
+                can be very easily integrated by larger plasmids. On the other
+                hand, this may be odd when looking for similar plasmids and
+                thus we implemented an option that allows to filter these
+                differences in sequence size between pairs of plasmids. This
+                option can be accessed through the
+                left side menu, by selecting 'size ratio'.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-info">
+          <div class="panel-heading">
+            <a href="#faq5" data-toggle="collapse"
+               data-parent="#help-accordion-1" style="text-decoration:none">
+              <h4>How can I share my results</h4>
+            </a>
+          </div>
+          <div id="faq5" class="collapse">
+            <div class="panel-body">
+              <p>You can share your results by exporting a project using the
+                sidebar menu. Just go to <b>Projects</b> -> <b>Export</b> and save your project.
+              </p>
+              <p>Then send the file to your co-workers.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-info">
+          <div class="panel-heading">
+            <a href="#faq6" data-toggle="collapse"
+               data-parent="#help-accordion-1" style="text-decoration:none">
+              <h4>How can I save my current session</h4>
+            </a>
+          </div>
+          <div id="faq6" class="collapse">
+            <div class="panel-body">
+              <p>You can save your current session by saving a Project.
+                Just go to <b>Projects</b> -> <b>Export</b> and save your project.
+              </p>
+              <p>Then, when you come back to pATLAS, just load this new file
+                through sidebar menu <b>Project</b> -> <b>Import</b> option. Select a 'view'
+                and you are good to go.
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>

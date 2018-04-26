@@ -22,7 +22,7 @@ const abortRead = () => {
  * reading this function, i.e., after reading all files
  */
 const handleFileSelect = (infileId, textId, callback) => {
-  document.getElementById(infileId).addEventListener("change", function (e) {
+  document.getElementById(infileId).addEventListener("change", (e) => {
     let arrayOfObj = {}
     const files = e.target.files // FileList object
     // append fle name to text fomr displaying current selection
@@ -33,7 +33,7 @@ const handleFileSelect = (infileId, textId, callback) => {
         alert("File extension not supported. Only '.json' files are supported.")
       } else {
         // append the filename to the form
-        $(textId).val(files[0].name) // TODO handle this
+        $(textId).val(files[0].name)
         // opens the instance of the reader
         const reader = new FileReader()
 
@@ -46,4 +46,23 @@ const handleFileSelect = (infileId, textId, callback) => {
     }
     callback(arrayOfObj)
   }, false)
+}
+
+/**
+ * Function to check if jsonObj is empty and warn the user for which entries
+ * might be empty upon loading.
+ * @param {Object} jsonObj - The object that collects all json files imported
+ */
+const fileChecks = (jsonObj) => {
+  // raise a warning if no files were added
+  if (jsonObj === false) {
+    $("#alertId_noFiles").show()
+  } else {
+    // checks if there are any empty file
+    if (Object.keys(jsonObj).length === 0 && jsonObj.constructor === Object) {
+      $("#alertJsonFileText").html("<strong>Error!</strong> Current selected JSON" +
+        " file is empty. No plasmids will be highlighted")
+      $("#alertJsonFile").show()
+    }
+  }
 }

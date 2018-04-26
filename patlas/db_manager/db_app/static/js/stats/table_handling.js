@@ -55,7 +55,9 @@ const getTableWithAreaSelection = (g, graphics) => {
   let tempListAccessions = []
   g.forEachNode( (node) => {
     const currentNodeUI = graphics.getNodeUI(node.id)
-    if (currentNodeUI.color === 0x23A900) { tempListAccessions.push(node.id) }
+    if (currentNodeUI.color === "0x" + "#fa5e00".replace("#", "")) {
+      tempListAccessions.push(node.id)
+    }
   })
   return tempListAccessions
 }
@@ -232,6 +234,9 @@ const makeTable = (areaSelection, listGiFilter, previousTableList, g, graphics) 
               //   return "<img src=\"{{ url_for('static'," +
               //     " filename='images/loading.gif') }}'\" />"
               // }
+              exportOptions: {
+                fileName: "pATLAS_table"
+              }
             })
             $("#loading").hide()
           })
@@ -378,7 +383,13 @@ const heatmapMaker = (masterReadArray, readObjects) => {
         enabled: true,
         color: "#000000"
       }
-    }]
+    }],
+    exporting: {
+      filename: "pATLAS_heatmap"
+    },
+    credits: {
+      enabled: false
+    }
   })
   $("#chartContainer2").show()
 }

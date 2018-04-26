@@ -21,15 +21,28 @@ popups triggered by the click on the desired Import option.
 **Statistics** button allow to calculate the desired statistics (e.g.
 taxa, resistance genes or length) and plot them in a chart.
 
-## Documentation
+## Projects
+
+**Projects** has two buttons one for exporting and another for importing
+projects. The idea of this module is to provide an easy and rapid way
+for users to share results or just to save a session so that users
+continue data exploration later.
+
+## Need help?
+
+### Documentation
 
 **Documentation** button will open this `gitbook`, i.e., the actual
 document that you are reading now.
 
-## Video tutorial
+### Video tutorial
 
 **Video tutorial** button will open a popup with a playlist of short
 tutorials that display pATLAS key features.
+
+### FAQs
+
+A set of questions that may occur to users when using pATLAS
 
 ## About
 
